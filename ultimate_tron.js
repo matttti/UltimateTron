@@ -410,7 +410,7 @@ Array.prototype.sum=function() {
 function redraw_scorecard() {
 	var table = $('<table>');
 	
-	var thr = $('<tr><th>Name</th><th>Games</th><th>Points</th><th>Kills</th><th>Deaths</th></tr>')
+	var thr = $('<tr><th></th><th>Games</th><th>Points</th><th>Kills</th><th>Deaths</th></tr>')
 	table.append(thr);
 	players.forEach(function (player) {
 		var tr = $('<tr>');
