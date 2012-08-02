@@ -203,7 +203,7 @@ function init_arena() {
 
 var default_game_params = {
 	virtual: false,
-	tick_interval: 5, //ms
+	tick_interval: 20, //ms
 	gameover_callback : function(){},
 	player_gameover_callback: function() {}
 };
@@ -294,6 +294,7 @@ function Game(players, game_params) {
 			canvas = $('canvas').get(0);
 			ctx=canvas.getContext("2d");
 			ctx.clearRect(0,0, canvas.width, canvas.height);
+			draw_arena(arena);
 			ticker = setInterval(round, game_params.tick_interval);
 		}
 	};
@@ -353,12 +354,22 @@ function draw(player){
 
 
 function createGlow(player, a) {
-	var r = 8;
+	var r = 4;
 	var g = ctx.createRadialGradient(player.posX*2,player.posY*2,0,player.posX*2,player.posY*2,r);
 	g.addColorStop(0, 'rgba(' + player.color + ',' + a + ')');
 	g.addColorStop(1, 'rgba(' + player.color2 + ',0.0)');
 	ctx.fillStyle = g;
 	ctx.fillRect(player.posX*2 -r, player.posY*2 -r, r * 2, r * 2);
+}
+
+function draw_arena(arena) {
+	//ctx.strokeStyle = 'rgb(255,255,255)';
+	var lingrad = ctx.createLinearGradient(0,0,0,600);
+    lingrad.addColorStop(0, '#00ABEB');
+    lingrad.addColorStop(1, '#fff');
+    ctx.strokeStyle = lingrad;
+	ctx.lineWidth = 4;
+    ctx.strokeRect(1,1,798,598);
 }
 
 
@@ -384,8 +395,8 @@ document.onkeydown=function(e){
 }
 
 var players = [
-	new Player(player1_slot, 'Player1'),
-	new AIPlayer(player2_slot, 'Player2'),
+	new Player(player1_slot, 'Matti'),
+	new Player(player2_slot, 'Tanja'),
 	new AIPlayer(player3_slot, 'Player3'),
 	new AIPlayer(player4_slot, 'Player4'),
 	new AIPlayer(player5_slot, 'Player5'),
@@ -441,7 +452,7 @@ function restart() {
 }
 
 function calc_fps() {
-	$('#fps').text(frames + ' round:' + (round_ms/frames) + ' calc:' + (calc_ms/frames) + ' draw:' + (draw_ms/frames));
+	$('#fps').html(frames + '<br>round:' + (round_ms/frames).toFixed(2) + '<br>calc:' + (calc_ms/frames).toFixed(2) + '<br>draw:' + (draw_ms/frames).toFixed(2));
 	frames = 0;
 	round_ms=0;
 	calc_ms=0;
