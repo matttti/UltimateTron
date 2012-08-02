@@ -79,9 +79,10 @@ body {
 	position: absolute;
 	top: 700px;
 	left: 1060px;
-	color: blue;
+	color: #000;
 	font-weight: bold;
 	font-family: monospace;
+	text-shadow: 0;
 }
 
 #fps:before {
