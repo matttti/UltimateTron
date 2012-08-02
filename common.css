@@ -1,0 +1,70 @@
+h2 {
+	padding: 5px;
+	font-size: 14pt;
+	font-style: italic;
+	margin-top: 0;
+}
+body {
+	font-size: 10pt;
+	background-color: black;
+	color: #CCC;
+}
+
+#gamearea {
+	position: absolute;
+	width: 800px;
+	height:600px;
+	top: 90px;
+	left: 50px;
+	border: 2px solid #000;
+}
+
+#scoreCard {
+	position: absolute;
+	width: 300px;
+	height: 180px;
+	top: 90px;
+	left: 860px;
+	border: 1px solid gray;
+}
+
+#scoreCard td {
+	width: 50px;
+	padding: 2px;
+	border: 1px dotted gray;
+}
+
+#messages {
+	position: absolute;
+	width: 300px;
+	height: 400px;
+	top: 290px;
+	left: 860px;
+	border: 1px solid gray;
+	overflow: scroll;
+}
+#messages p {
+	font-size: 12px;	
+	margin: 2px;
+	font-family: monospace;
+} 
+
+#fps {
+	position: absolute;
+	top: 700px;
+	left: 1060px;
+	color: blue;
+	font-weight: bold;
+	font-family: monospace;
+}
+
+#fps:before {
+	content: "fps: ";
+}
+
+canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+	border: 1px solid white;
+}
