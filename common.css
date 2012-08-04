@@ -4,6 +4,9 @@ body {
 	font-weight: bold;
     background: none repeat scroll 0 0 #000000;
     color: #FFFFFF;
+}
+
+.shadow{
     text-shadow:
     0 0 10px #FFFFFF,
     0 0 20px #FFFFFF,

@@ -389,6 +389,9 @@ document.onkeydown=function(e){
 	if(e.keyCode == 116) {
 		restart();
 	}
+	if(e.keyCode == 117) {
+		$('body').toggleClass('shadow');
+	}
 
 	if(current_game)
 		current_game.register_keystroke(e.keyCode);
