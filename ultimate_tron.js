@@ -198,9 +198,9 @@ function init_arena(width,height) {
 		arena[i][0] = {player:Border};
 		arena[i][height-1] = {player:Border};
 	}
-	for (var j=0; j<width; ++j) {
-		arena[j][0] = {player:Border};
-		arena[j][height-1] = {player:Border};
+	for (var j=0; j<height; ++j) {
+		arena[0][j] = {player:Border};
+		arena[width-1][j] = {player:Border};
 	}
 	return arena;
 }
@@ -255,7 +255,7 @@ function Game(players, game_params) {
 		
 		player_state.posX += deltas[0];
 		player_state.posY += deltas[1];
-		
+
 		if(is_out_of_bounds(player_state.posX,player_state.posY, game_params.arena_width, game_params.arena_height)) {
 			escape(player_state);
 		}
@@ -264,7 +264,6 @@ function Game(players, game_params) {
 		}
 		else {
 			arena[player_state.posX][player_state.posY] = player_state;
-
 			player_state.player.next_round(that,player_state);
 		}
 	}
@@ -281,7 +280,7 @@ function Game(players, game_params) {
 			splinter.dist_from_origin += splinter.speed;
 			splinter.speed -= 1/game_params.splinter_rounds;
 
-			if(!is_out_of_bounds(splinter.oldX,splinter.oldY, game_params.arena_width, game_params.arena_height))
+			if(!is_out_of_bounds(splinter.old_posX,splinter.old_posY, game_params.arena_width, game_params.arena_height))
 				arena[splinter.old_posX][splinter.old_posY] = undefined;
 		});
 
@@ -374,7 +373,7 @@ function Game(players, game_params) {
 		--living_players;
 
 		player_state.player.games_played++;
-		player_state.player.escapes++;
+		player_state.player.scoreCard.escapes++;
 		player_state.player.scoreCard.places.push( players.length);
 
 		if(!living_players)
@@ -481,7 +480,6 @@ function draw_arena(arena) {
 
 
 function msg(str,color) {
-	return;
 	$('<p>').text(str).css('color',color).appendTo('#messages');
 	$('#messages').stop().animate({
          scrollTop: $("#messages")[0].scrollHeight
