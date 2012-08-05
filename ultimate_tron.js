@@ -34,6 +34,7 @@ function ScoreCard() {
 	this.places = [];
 	this.kills = [];
 	this.deaths = [];
+	this.escapes = 0;
 }
 
 var Border = {
@@ -158,65 +159,74 @@ function AIPlayer(player_slot, id, ai_params) {
 
 	function calc_obstacle_dist(arena,x,y,dir) {
 		var dist_obstacle = 0;
-		var p_zero = [x,y];
+		//var p_zero = [x,y];
 		while(true) {
 
 			switch (dir) {
 				case 0:
-					p_zero = [p_zero[0], p_zero[1] -1];
+					--y;
 				break;
 				case 1:
-					p_zero = [p_zero[0] +1, p_zero[1]];
+					++x;
 				break;
 				case 2:
-					p_zero = [p_zero[0], p_zero[1] +1];
+					++y;
 				break;
 				case 3:
-					p_zero = [p_zero[0] -1, p_zero[1]];
+					--x;
 				break;
 				
 			}
 			dist_obstacle ++;
-			if(arena[p_zero[0]][p_zero[1]])
+			if(is_out_of_bounds(x,y,arena.length, arena[0].length) || arena[x][y])
 				break;
 
 		}
 		return dist_obstacle;
 	}
-
 }
 
-function init_arena() {
-	var arena=new Array(400)
-	for(var i =0; i<arena.length; ++i) {
-		arena[i] = new Array(300);
+
+function is_out_of_bounds(x,y,width,height) {
+	return x < 0 || x >= width || y < 0 || y >= height;
+}
+
+function init_arena(width,height) {
+	var arena=new Array(width);
+	for(var i =0; i<width; ++i) {
+		arena[i] = new Array(height);
 		arena[i][0] = {player:Border};
-		arena[i][299] = {player:Border};
-		if(i == 0 || i == 399) {
-			for (var j=0; j<300; ++j) {
-				arena[i][j] = {player:Border};
-			}
-		}
+		arena[i][height-1] = {player:Border};
+	}
+	for (var j=0; j<width; ++j) {
+		arena[j][0] = {player:Border};
+		arena[j][height-1] = {player:Border};
 	}
 	return arena;
 }
 
 var default_game_params = {
+	arena_width: 400,
+	arena_height : 300,
 	virtual: false,
 	tick_interval: 20, //ms
 	gameover_callback : function(){},
-	player_gameover_callback: function() {}
+	player_gameover_callback: function() {},
+	player_escapes_callback: function() {},
+	splinter_rounds : 60,
+	splinter_count : 30
 };
 
 function Game(players, game_params) {
 	update(game_params,default_game_params);
 
 	var that = this;
-	var arena = init_arena();
+	var arena = init_arena(game_params.arena_width, game_params.arena_height);
 	this.arena = arena;
 	var living_players;
 	var ticker;
 	var keystroke_map = {};
+	var remaining_rounds = Infinity;
 
 	var player_states;
 
@@ -246,8 +256,12 @@ function Game(players, game_params) {
 		player_state.posX += deltas[0];
 		player_state.posY += deltas[1];
 		
-		if(arena[player_state.posX][player_state.posY])
+		if(is_out_of_bounds(player_state.posX,player_state.posY, game_params.arena_width, game_params.arena_height)) {
+			escape(player_state);
+		}
+		else if(arena[player_state.posX][player_state.posY]) {
 			gameover(player_state, arena[player_state.posX][player_state.posY]);
+		}
 		else {
 			arena[player_state.posX][player_state.posY] = player_state;
 
@@ -255,11 +269,33 @@ function Game(players, game_params) {
 		}
 	}
 
+	function move_splinters(player_state) {
+		if(!player_state.gameover || !player_state.splinter_rounds_left)
+			return;
+
+		player_state.splinters.forEach(function(splinter) {
+			splinter.old_posX = splinter.posX;
+			splinter.old_posY = splinter.posY;
+			splinter.posX = Math.floor(Math.sin(splinter.angle) * splinter.dist_from_origin) + splinter.originX;
+			splinter.posY = Math.floor(-Math.cos(splinter.angle) * splinter.dist_from_origin) + splinter.originY;
+			splinter.dist_from_origin += splinter.speed;
+			splinter.speed -= 1/game_params.splinter_rounds;
+
+			if(!is_out_of_bounds(splinter.oldX,splinter.oldY, game_params.arena_width, game_params.arena_height))
+				arena[splinter.old_posX][splinter.old_posY] = undefined;
+		});
+
+		player_state.splinter_rounds_left--;
+	}
+
+
 	function round() {
 		var first_t = Date.now();
 
 		player_states.forEach(move);
 		keystroke_map = {};
+
+		player_states.forEach(move_splinters);
 
 		var second_t = Date.now();
 		calc_ms += second_t- first_t;
@@ -271,7 +307,9 @@ function Game(players, game_params) {
 		draw_ms += Date.now() - second_t;
 		round_ms += Date.now() - first_t;
 
-		if(living_players == 0) {	
+		remaining_rounds --;
+
+		if(!remaining_rounds) {	
 			that.destroy();
 			return false;
 		}
@@ -290,27 +328,27 @@ function Game(players, game_params) {
 			while(round());	
 		}
 		else {
-			clearInterval(ticker);
 			canvas = $('canvas').get(0);
 			ctx=canvas.getContext("2d");
 			ctx.clearRect(0,0, canvas.width, canvas.height);
 			draw_arena(arena);
-			ticker = setInterval(round, game_params.tick_interval);
+			this.run();
 		}
 	};
 
 	this.destroy = function() {
-		clearInterval(ticker);
+		this.stop();
 		game_params.gameover_callback();
 	}
 
-	this.to_left = function() {
-		player_states[0].left = true;
-	} 
+	this.stop = function() {
+		clearInterval(ticker);
+	}
 
-	this.to_right = function() {
-		player_states[0].right = true;
-	} 
+	this.run = function() {
+		this.stop();
+		ticker = setInterval(round, game_params.tick_interval);
+	}
 
 	this.register_keystroke = function(keycode) {
 		keystroke_map[keycode] = true;
@@ -326,40 +364,107 @@ function Game(players, game_params) {
 		crashed_into.player.scoreCard.kills.push(player_state.player);
 		player_state.player.scoreCard.places.push( players.length - living_players );
 
+		create_splinters(player_state);
+
 		game_params.player_gameover_callback(player_state.player,crashed_into.player);
 	}
+
+	function escape(player_state) {
+		player_state.gameover = true;
+		--living_players;
+
+		player_state.player.games_played++;
+		player_state.player.escapes++;
+		player_state.player.scoreCard.places.push( players.length);
+
+		if(!living_players)
+			remaining_rounds = game_params.splinter_rounds;
+
+		game_params.player_escapes_callback(player_state.player);
+
+	}
+
+	function create_splinters(player_state) {
+		player_state.splinter_rounds_left = game_params.splinter_rounds;
+		player_state.splinters = [];
+		for (var i=0; i<= game_params.splinter_count; ++i) {
+			var splinter = {
+				speed : 1,
+				originX : player_state.posX,
+				originY : player_state.posY,
+				posX: player_state.posX,
+				posY: player_state.posY,
+				angle : ((nrand() /1.4 + player_state.dir) % 4) / 4 * 2*Math.PI,
+				dist_from_origin : 0,
+				speed : 1
+			}
+			player_state.splinters.push(splinter);
+		}
+
+	}
+
 }
 
-function get_deltas(player) {
-	switch(player.dir) {
+function get_deltas(player_state) {
+	switch(player_state.dir) {
 		case 0:
-		return [0,-player.velocity];
+		return [0,-player_state.velocity];
 		case 1:
-		return [player.velocity,0];
+		return [player_state.velocity,0];
 		case 2:
-		return [0,player.velocity];
+		return [0,player_state.velocity];
 		case 3: 
-		return [-player.velocity,0];
+		return [-player_state.velocity,0];
 	}	
 }
 
 
 
-function draw(player){
-	if(player.gameover)
-		;
-	else
-		createGlow(player, 0.5);
+function draw(player_state){
+	var radius = 2;
+	var a = 0.5;
+
+	if(!player_state.gameover)
+		createGlow(player_state, 0.5);
+	else if (player_state.splinter_rounds_left) {
+		
+
+		player_state.splinters.forEach(function(splinter) {
+			// ctx.beginPath();
+			// ctx.clearRect(splinter.old_posX*2 - radius, splinter.old_posY*2 - radius - 1, radius * 2 + 1, radius * 2 + 1);
+			// ctx.closePath();
+
+			ctx.fillStyle='rgb(0,0,0)';
+			ctx.beginPath();
+			ctx.arc(splinter.old_posX*2, splinter.old_posY*2,radius,0,Math.PI*2);
+			ctx.closePath();
+			ctx.fill();
+
+			if(player_state.splinter_rounds_left > 1) {
+
+				var g = ctx.createRadialGradient(splinter.posX*2,splinter.posY*2,0,splinter.posX*2,splinter.posY*2,radius);
+				//g.addColorStop(0, 'rgba(' + player_state.color + ',' + a + ')');
+				//g.addColorStop(1, 'rgba(' + player_state.color2 + ',0.0)');
+				//ctx.fillStyle=g;
+				ctx.fillStyle='rgba(' + player_state.color+',' + splinter.speed +')';
+				ctx.beginPath();
+				ctx.arc(splinter.posX*2, splinter.posY*2,radius,0,Math.PI*2);
+				ctx.closePath();
+				ctx.fill();
+			}
+
+		});
+	}
 }
 
 
-function createGlow(player, a) {
+function createGlow(player_state, a) {
 	var r = 4;
-	var g = ctx.createRadialGradient(player.posX*2,player.posY*2,0,player.posX*2,player.posY*2,r);
-	g.addColorStop(0, 'rgba(' + player.color + ',' + a + ')');
-	g.addColorStop(1, 'rgba(' + player.color2 + ',0.0)');
+	var g = ctx.createRadialGradient(player_state.posX*2,player_state.posY*2,0,player_state.posX*2,player_state.posY*2,r);
+	g.addColorStop(0, 'rgba(' + player_state.color + ',' + a + ')');
+	g.addColorStop(1, 'rgba(' + player_state.color2 + ',0.0)');
 	ctx.fillStyle = g;
-	ctx.fillRect(player.posX*2 -r, player.posY*2 -r, r * 2, r * 2);
+	ctx.fillRect(player_state.posX*2 -r, player_state.posY*2 -r, r * 2, r * 2);
 }
 
 function draw_arena(arena) {
@@ -376,6 +481,7 @@ function draw_arena(arena) {
 
 
 function msg(str,color) {
+	return;
 	$('<p>').text(str).css('color',color).appendTo('#messages');
 	$('#messages').stop().animate({
          scrollTop: $("#messages")[0].scrollHeight
@@ -399,7 +505,7 @@ document.onkeydown=function(e){
 
 var players = [
 	new Player(player1_slot, 'Matti'),
-	new Player(player2_slot, 'Tanja'),
+	new Player(player2_slot, 'Player2'),
 	new AIPlayer(player3_slot, 'Player3'),
 	new AIPlayer(player4_slot, 'Player4'),
 	new AIPlayer(player5_slot, 'Player5'),
@@ -413,7 +519,7 @@ Array.prototype.sum=function() {
 function redraw_scorecard() {
 	var table = $('<table>');
 	
-	var thr = $('<tr><th></th><th>Games</th><th>Points</th><th>Kills</th><th>Deaths</th></tr>')
+	var thr = $('<tr><th></th><th>Games</th><th>Points</th><th>Kills</th><th>Esacpes</th></tr>')
 	table.append(thr);
 	players.forEach(function (player) {
 		var tr = $('<tr>');
@@ -421,7 +527,7 @@ function redraw_scorecard() {
 		.append('<td>' + player.scoreCard.places.length + '</td>')
 		.append('<td>' + player.scoreCard.places.sum() + '</td>')
 		.append('<td>' + player.scoreCard.kills.length + '</td>')
-		.append('<td>' + player.scoreCard.deaths.length + '</td>');
+		.append('<td>' + player.scoreCard.escapes + '</td>');
 		table.append(tr);
 	});
 	$('#scoreCard').html(table);
@@ -429,6 +535,11 @@ function redraw_scorecard() {
 
 function player_gameover(player, crashed_into) {
 	msg(player.id + ' crashed into ' + crashed_into.id ,'#00FFFF');
+	redraw_scorecard();
+}
+
+function player_escapes(player) {
+	msg(player.id + ' escapes' ,'#00FFFF');
 	redraw_scorecard();
 }
 
@@ -445,12 +556,26 @@ function shuffle(array) {
     return array;
 }
 
+function nrand() {
+	var x1, x2, rad, y1;
+
+	do {
+		x1 = 2 * Math.random() - 1;
+		x2 = 2 * Math.random() - 1;
+		rad = x1 * x1 + x2 * x2;
+	} while(rad >= 1 || rad == 0);
+
+	var c = Math.sqrt(-2 * Math.log(rad) / rad);
+
+	return x1 * c;
+};
+
 function restart() {
 	redraw_scorecard();
 	if(current_game)
 		current_game.destroy();
 	msg('start', 'red');
-	current_game = new Game(players, {gameover_callback: redraw_scorecard, player_gameover_callback: player_gameover});
+	current_game = new Game(players, {gameover_callback: redraw_scorecard, player_gameover_callback: player_gameover, player_escapes_callback: player_escapes});
 	current_game.init();
 }
 

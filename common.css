@@ -33,6 +33,21 @@ h2 {
 	0 0 100px #FF00DE,
 	0 0 150px #FF00DE;
 }
+
+h2.intro {
+	font-size: 100pt;
+	font-style: italic;
+	font-family: verdana;
+	font-weight: bold;
+	margin-bottom: 0;
+	width: 100%;
+	text-align: center;
+	height: 35%;
+	vertical-align: middle;
+	text-shadow: 0 0 10px white, 0 0 30px white, 0 0 40px #FF00DE, 0 0 70px #FF00DE, 0 0 80px #FF00DE, 0 0 100px #FF00DE, 0 0 150px #FF00DE;
+}
+
+
 body {
 	font-size: 10pt;
 	background-color: black;
@@ -54,7 +69,7 @@ body {
 	height: 180px;
 	top: 90px;
 	left: 860px;
-	border: 1px solid gray;
+	/*border: 1px solid gray;*/
 }
 
 #scoreCard td {
