@@ -47,6 +47,10 @@ h2.intro {
 	text-shadow: 0 0 10px white, 0 0 30px white, 0 0 40px #FF00DE, 0 0 70px #FF00DE, 0 0 80px #FF00DE, 0 0 100px #FF00DE, 0 0 150px #FF00DE;
 }
 
+.lineup-marker {
+	position: absolute;
+	font-size: 18px;
+}
 
 body {
 	font-size: 10pt;

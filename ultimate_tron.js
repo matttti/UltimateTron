@@ -26,7 +26,53 @@ function update(o1,o2) {
 			o1[key] = o2[key];
 		}
 	}
-	return o1;	
+	return o1;
+}
+
+
+function shuffle(array) {
+	var tmp, current, top = array.length;
+
+	if(top) while(--top) {
+		current = Math.floor(Math.random() * (top + 1));
+		tmp = array[current];
+		array[current] = array[top];
+		array[top] = tmp;
+	}
+
+	return array;
+}
+
+function nrand() {
+	var x1, x2, rad, y1;
+
+	do {
+		x1 = 2 * Math.random() - 1;
+		x2 = 2 * Math.random() - 1;
+		rad = x1 * x1 + x2 * x2;
+	} while(rad >= 1 || rad == 0);
+
+	var c = Math.sqrt(-2 * Math.log(rad) / rad);
+
+	return x1 * c;
+};
+
+// starting with slot 0
+function calc_startposition(slot, arena_width, arena_height) {
+	switch(slot) {
+		case 0:
+			return [arena_width/5, arena_height/5, 1];  // x,y,dir
+		case 1:
+			return [arena_width/5*4, arena_height/5, 3];
+		case 2:
+			return [arena_width/5, arena_height/5*4, 1];
+		case 3:
+			return [arena_width/5*4, arena_height/5*4, 3];
+		case 4:
+			return [arena_width/5, arena_height/2, 1];
+		case 5:
+			return [arena_width/5*4, arena_height/2, 3];
+	}
 }
 
 function ScoreCard() {
@@ -43,9 +89,6 @@ var Border = {
 };
 
 var player1_slot = {
-	posX : 50,
-	posY : 50,
-	dir : 1, //0-top, 1-right, ..,
 	velocity : 1,
 	color : '255,0,0',
 	color2 : '255,255,0',
@@ -54,9 +97,6 @@ var player1_slot = {
 };
 
 var player2_slot = {
-	posX : 350,
-	posY : 50,
-	dir : 3, //0-top, 1-right, ..,
 	velocity : 1,
 	color : '255,0,255',
 	color2 : '255,255,255',
@@ -65,9 +105,6 @@ var player2_slot = {
 };
 
 var player3_slot = {
-	posX : 50,
-	posY : 250,
-	dir : 1, //0-top, 1-right, ..,
 	velocity : 1,
 	color : '124,252,0',
 	color2 : '72,209,204',
@@ -76,9 +113,6 @@ var player3_slot = {
 };
 
 var player4_slot = {
-	posX : 350,
-	posY : 250,
-	dir : 3, //0-top, 1-right, ..,
 	velocity : 1,
 	color : '255,255,0',
 	color2 : '0,100,0',
@@ -87,9 +121,6 @@ var player4_slot = {
 };
 
 var player5_slot = {
-	posX : 50,
-	posY : 150,
-	dir : 1, //0-top, 1-right, ..,
 	velocity : 1,
 	color : '255,0,0',
 	color2 : '205,92,92',
@@ -98,9 +129,6 @@ var player5_slot = {
 };
 
 var player6_slot = {
-	posX : 350,
-	posY : 150,
-	dir : 3, //0-top, 1-right, ..,
 	velocity : 1,
 	color : '0,0,205',
 	color2 : '211,211,211',
@@ -209,7 +237,7 @@ var default_game_params = {
 	arena_width: 400,
 	arena_height : 300,
 	virtual: false,
-	fps: 60,
+	fps: 50,
 	gameover_callback : function(){},
 	player_gameover_callback: function() {},
 	player_escapes_callback: function() {},
@@ -331,7 +359,7 @@ function Game(players, game_params) {
 			ctx=canvas.getContext("2d");
 			ctx.clearRect(0,0, canvas.width, canvas.height);
 			draw_arena(arena);
-			this.run();
+			//this.run();
 		}
 	};
 
@@ -541,40 +569,61 @@ function player_escapes(player) {
 	redraw_scorecard();
 }
 
-function shuffle(array) {
-    var tmp, current, top = array.length;
-
-    if(top) while(--top) {
-        current = Math.floor(Math.random() * (top + 1));
-        tmp = array[current];
-        array[current] = array[top];
-        array[top] = tmp;
-    }
-
-    return array;
-}
-
-function nrand() {
-	var x1, x2, rad, y1;
-
-	do {
-		x1 = 2 * Math.random() - 1;
-		x2 = 2 * Math.random() - 1;
-		rad = x1 * x1 + x2 * x2;
-	} while(rad >= 1 || rad == 0);
-
-	var c = Math.sqrt(-2 * Math.log(rad) / rad);
-
-	return x1 * c;
-};
-
 function restart() {
 	redraw_scorecard();
 	if(current_game)
 		current_game.destroy();
 	msg('start', 'red');
-	current_game = new Game(players, {gameover_callback: redraw_scorecard, player_gameover_callback: player_gameover, player_escapes_callback: player_escapes});
+
+	var game_players = shuffle(players);
+
+	for(var i = 0; i< game_players.length; ++i) {
+		var start_position = calc_startposition(i, default_game_params.arena_width, default_game_params.arena_height);
+		merge(game_players[i].player_slot, {
+			posX: start_position[0],
+			posY: start_position[1],
+			dir:  start_position[2]});
+	}
+
+	current_game = new Game(game_players, {gameover_callback: redraw_scorecard, player_gameover_callback: player_gameover, player_escapes_callback: player_escapes});
 	current_game.init();
+
+	show_lineup(game_players, function() {
+		current_game.run()
+	});
+
+}
+
+var lineup_countdown1;
+var lineup_countdown2;
+function show_lineup(players, init_game_callback) {
+	var gamearea_width = $('#gamearea').width();
+
+	clearTimeout(lineup_countdown1);
+	clearTimeout(lineup_countdown2);
+
+	$('.lineup-marker').remove();
+
+	players.forEach(function(player) {
+		var marker = $('<span>').addClass('lineup-marker').text(player.id);
+		marker.css('top', player.player_slot.posY*2 - 50 + 'px');
+
+		if(player.player_slot.dir == 1)
+			marker.css('left', player.player_slot.posX*2 + 'px');
+		else
+			marker.css('right', gamearea_width-player.player_slot.posX*2 + 'px');
+
+		marker.css('color', 'rgb(' + player.player_slot.color + ')');
+		$('#gamearea').append(marker);
+	});
+
+	lineup_countdown1 = setTimeout(function() {
+		$('.lineup-marker').fadeOut('slow');
+		init_game_callback();
+	}, 2000);
+
+	//lineup_countdown2 = setTimeout(init_game_callback, 2000);
+
 }
 
 function calc_fps() {
