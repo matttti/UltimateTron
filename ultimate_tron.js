@@ -209,7 +209,7 @@ var default_game_params = {
 	arena_width: 400,
 	arena_height : 300,
 	virtual: false,
-	tick_interval: 20, //ms
+	fps: 60,
 	gameover_callback : function(){},
 	player_gameover_callback: function() {},
 	player_escapes_callback: function() {},
@@ -346,7 +346,7 @@ function Game(players, game_params) {
 
 	this.run = function() {
 		this.stop();
-		ticker = setInterval(round, game_params.tick_interval);
+		ticker = setInterval(round, 1000/game_params.fps);
 	}
 
 	this.register_keystroke = function(keycode) {
